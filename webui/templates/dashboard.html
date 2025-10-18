@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - VPN Cloud{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>VPN Dashboard</h1>
+        <p>Manage your VPN connection and configuration</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+                <h3 id="totalUsers">-</h3>
+                <p>Total Users</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🔗</div>
+            <div class="stat-info">
+                <h3 id="activeConnections">-</h3>
+                <p>Active Connections</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <h3 id="serverStatus">-</h3>
+                <p>Server Status</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-grid">
+        <div class="action-card">
+            <h2>Generate VPN Configuration</h2>
+            <p>Download your personalized WireGuard configuration file</p>
+            <button onclick="generateConfig()" class="btn-primary">Generate Config</button>
+            <div id="config-result" class="result-box hidden"></div>
+        </div>
+
+        <div class="action-card">
+            <h2>Access Policy</h2>
+            <p>This VPN only allows access to:</p>
+            <ul class="policy-list">
+                <li>✅ YouTube (youtube.com)</li>
+                <li>✅ YouTube Videos (googlevideo.com)</li>
+                <li>✅ YouTube Images (ytimg.com)</li>
+                <li>❌ All other websites (blocked)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>Quick Setup Guide</h2>
+        <ol>
+            <li>Click "Generate Config" to create your VPN configuration</li>
+            <li>Save the configuration file to your device</li>
+            <li>Import the configuration into WireGuard client</li>
+            <li>Connect and enjoy YouTube-only access!</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+async function loadStatus() {
+    try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('totalUsers').textContent = data.total_users;
+            document.getElementById('activeConnections').textContent = data.active_connections;
+            document.getElementById('serverStatus').textContent = data.status.toUpperCase();
+        }
+    } catch (error) {
+        console.error('Failed to load status:', error);
+    }
+}
+
+async function generateConfig() {
+    const resultDiv = document.getElementById('config-result');
+    resultDiv.innerHTML = '<p>Generating configuration...</p>';
+    resultDiv.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/config/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            resultDiv.innerHTML = `
+                <h3>Configuration Generated!</h3>
+                <p>Assigned IP: ${data.assigned_ip}</p>
+                <pre>${data.config}</pre>
+                <button onclick="downloadConfig('${data.config}')" class="btn-secondary">
+                    Download Config File
+                </button>
+            `;
+        } else {
+            resultDiv.innerHTML = `<p class="error">${data.error}</p>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = '<p class="error">Failed to generate configuration</p>';
+    }
+}
+
+function downloadConfig(config) {
+    const blob = new Blob([config], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wg0.conf';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Load status on page load
+loadStatus();
+setInterval(loadStatus, 10000); // Refresh every 10 seconds
+</script>
+{% endblock %}

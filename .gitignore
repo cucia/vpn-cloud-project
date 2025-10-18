@@ -1,0 +1,58 @@
+# VPN Cloud Project - Git Ignore
+
+# Certificates and Keys
+certs/
+*.pem
+*.key
+*.crt
+
+# WireGuard configs
+wireguard/wg0.conf
+*.conf
+
+# Database
+*.sql.gz
+backup*.sql
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Secrets
+secrets.yml
+credentials.json
