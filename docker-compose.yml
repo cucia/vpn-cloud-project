@@ -67,6 +67,8 @@ services:
       DB_NAME: vpn_users
       SECRET_KEY: change_this_secret_key_in_production_xyz789
       WIREGUARD_HOST: wireguard
+      WIREGUARD_PUBLIC_KEY: ${WIREGUARD_PUBLIC_KEY:-SERVER_PUBLIC_KEY_HERE}
+      SERVER_ENDPOINT: ${SERVER_ENDPOINT:-YOUR_SERVER_IP:51820}
     ports:
       - "5000:5000"
     depends_on:

@@ -167,17 +167,20 @@ def generate_config():
             conn.commit()
 
         # Create WireGuard config
-        config = f"""[Interface]
-PrivateKey = {private_key}
-Address = {next_ip}/32
-DNS = 1.1.1.1
+        server_public_key = os.getenv('WIREGUARD_PUBLIC_KEY', 'SERVER_PUBLIC_KEY_HERE')
+        server_endpoint = os.getenv('SERVER_ENDPOINT', 'YOUR_SERVER_IP:51820')
 
-[Peer]
-PublicKey = SERVER_PUBLIC_KEY_HERE
-Endpoint = YOUR_SERVER_IP:51820
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
-"""
+        config = f"""[Interface]
+    PrivateKey = {private_key}
+    Address = {next_ip}/32
+    DNS = 1.1.1.1
+
+    [Peer]
+    PublicKey = {server_public_key}
+    Endpoint = {server_endpoint}
+    AllowedIPs = 0.0.0.0/0
+    PersistentKeepalive = 25
+    """
 
         return jsonify({
             'success': True,
