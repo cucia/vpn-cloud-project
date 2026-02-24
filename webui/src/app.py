@@ -4,17 +4,19 @@ VPN Cloud Project - Main Flask Application
 Handles authentication, user management, and WireGuard configuration
 """
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 import pymysql
 import hashlib
 import os
 import subprocess
-import secrets
-from datetime import datetime, timedelta
 from functools import wraps
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, '..', 'static')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 CORS(app)
 
@@ -59,8 +61,9 @@ def dashboard():
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     """User login endpoint"""
+    conn = None
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         username = data.get('username')
         password = data.get('password')
 
@@ -129,9 +132,9 @@ def logout():
 @require_auth
 def generate_config():
     """Generate WireGuard configuration for user"""
+    conn = None
     try:
         user_id = session['user_id']
-        username = session['username']
 
         # Generate WireGuard keypair
         private_key = subprocess.check_output(['wg', 'genkey']).decode().strip()
@@ -153,7 +156,10 @@ def generate_config():
             if last_conn:
                 last_ip = last_conn['assigned_ip']
                 ip_parts = last_ip.split('.')
-                next_ip = f"10.13.13.{int(ip_parts[3]) + 1}"
+                next_ip_last_octet = int(ip_parts[3]) + 1
+                if next_ip_last_octet > 254:
+                    return jsonify({'error': 'VPN IP pool exhausted'}), 409
+                next_ip = f"10.13.13.{next_ip_last_octet}"
             else:
                 next_ip = "10.13.13.2"
 
@@ -171,16 +177,16 @@ def generate_config():
         server_endpoint = os.getenv('SERVER_ENDPOINT', 'YOUR_SERVER_IP:51820')
 
         config = f"""[Interface]
-    PrivateKey = {private_key}
-    Address = {next_ip}/32
-    DNS = 1.1.1.1
+PrivateKey = {private_key}
+Address = {next_ip}/32
+DNS = 1.1.1.1
 
-    [Peer]
-    PublicKey = {server_public_key}
-    Endpoint = {server_endpoint}
-    AllowedIPs = 0.0.0.0/0
-    PersistentKeepalive = 25
-    """
+[Peer]
+PublicKey = {server_public_key}
+Endpoint = {server_endpoint}
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+"""
 
         return jsonify({
             'success': True,
@@ -200,6 +206,7 @@ def generate_config():
 @require_auth
 def get_current_user():
     """Get current user information"""
+    conn = None
     try:
         user_id = session['user_id']
 
@@ -227,6 +234,7 @@ def get_current_user():
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Get VPN server status"""
+    conn = None
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
@@ -249,6 +257,11 @@ def get_status():
     finally:
         if conn:
             conn.close()
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Simple health endpoint"""
+    return jsonify({'success': True, 'status': 'ok'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

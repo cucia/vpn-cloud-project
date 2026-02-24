@@ -39,9 +39,30 @@ This project implements a full-stack VPN system with:
 unzip vpn-cloud-project.zip
 cd vpn-cloud-project
 
+# Create environment file
+cp .env.example .env
+```
+
+Update `.env` before first run:
+- `SECRET_KEY`
+- `DB_PASSWORD`
+- `MYSQL_ROOT_PASSWORD`
+- `WIREGUARD_PUBLIC_KEY`
+- `SERVER_ENDPOINT` (public IP or DNS with `:51820`)
+
+Linux/macOS:
+
+```bash
+
 # Run the quick start script
 chmod +x scripts/quickstart.sh
 ./scripts/quickstart.sh
+```
+
+Windows PowerShell:
+
+```powershell
+./scripts/quickstart.ps1
 ```
 
 ### 2. Access the Web UI
