@@ -116,6 +116,32 @@ sudo wg-connect --status
 sudo wg-connect --disconnect
 ```
 
+## 🧩 Desktop Client (Windows + Linux)
+
+An MVP desktop app is available in `desktop-client/` for a software-style experience.
+
+### Run
+
+Linux:
+```bash
+cd desktop-client
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+sudo python app.py
+```
+
+Windows (PowerShell as Administrator):
+```powershell
+cd desktop-client
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python app.py
+```
+
+The desktop app performs login, config generation, connect/disconnect, and status checks.
+
 ## 📁 Project Structure
 
 ```
@@ -138,6 +164,11 @@ vpn-cloud-project/
 ├── client/                     # Linux CLI client
 │   ├── wg_connect.py
 │   └── install.sh
+├── desktop-client/             # Cross-platform desktop client (MVP)
+│   ├── app.py
+│   ├── vpn_api.py
+│   ├── connector.py
+│   └── requirements.txt
 ├── scripts/                    # Utility scripts
 └── docs/                       # Documentation
 ```

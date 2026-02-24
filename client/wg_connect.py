@@ -69,41 +69,37 @@ def load_config():
             return json.load(f)
     return None
 
-def authenticate(server_url, username, password):
+def authenticate(http_session, server_url, username, password):
     """Authenticate with VPN server"""
     print_info(f"Authenticating as {username}...")
 
     try:
-        response = requests.post(
+        response = http_session.post(
             f"{server_url}/auth/login",
             json={'username': username, 'password': password},
-            verify=False,  # For self-signed certs in dev
             timeout=10
         )
 
         if response.status_code == 200:
-            data = response.json()
             print_success("Authentication successful")
-            return data
+            return True
         else:
             error = response.json().get('error', 'Unknown error')
             print_error(f"Authentication failed: {error}")
-            return None
+            return False
 
     except requests.exceptions.RequestException as e:
         print_error(f"Connection error: {e}")
         print_info("Make sure the VPN server is running and accessible")
-        return None
+        return False
 
-def generate_config(server_url, session_cookie):
+    def generate_config(http_session, server_url):
     """Generate WireGuard configuration from server"""
     print_info("Generating VPN configuration...")
 
     try:
-        response = requests.post(
+        response = http_session.post(
             f"{server_url}/config/generate",
-            cookies=session_cookie,
-            verify=False,
             timeout=10
         )
 
@@ -188,6 +184,9 @@ def main():
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+    http_session = requests.Session()
+    http_session.verify = False
+
     if args.setup:
         setup_wizard()
         return
@@ -223,12 +222,12 @@ def main():
     password = getpass.getpass("Password: ")
 
     # Authenticate
-    auth_data = authenticate(server_url, args.username, password)
-    if not auth_data:
+    is_authenticated = authenticate(http_session, server_url, args.username, password)
+    if not is_authenticated:
         sys.exit(1)
 
     # Generate config
-    vpn_config = generate_config(server_url, {'session': 'cookie'})
+    vpn_config = generate_config(http_session, server_url)
     if not vpn_config:
         sys.exit(1)
 

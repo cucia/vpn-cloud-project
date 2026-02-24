@@ -67,6 +67,8 @@
 </div>
 
 <script>
+let latestConfig = null;
+
 async function loadStatus() {
     try {
         const response = await fetch('/api/status');
@@ -98,13 +100,17 @@ async function generateConfig() {
         const data = await response.json();
 
         if (response.ok) {
+            latestConfig = data.config;
+
             resultDiv.innerHTML = `
                 <h3>Configuration Generated!</h3>
                 <p>Assigned IP: ${data.assigned_ip}</p>
                 <pre>${data.config}</pre>
-                <button onclick="downloadConfig('${data.config}')" class="btn-secondary">
-                    Download Config File
-                </button>
+                <p><strong>Quick Connect Downloads:</strong></p>
+                <button onclick="downloadConfigFile()" class="btn-secondary">Download wg0.conf</button>
+                <button onclick="downloadLinuxAutoConnect()" class="btn-secondary">Download Linux Auto-Connect Script</button>
+                <button onclick="downloadWindowsAutoConnect()" class="btn-secondary">Download Windows Auto-Connect Script</button>
+                <p><small>Note: Browsers cannot directly create system VPN tunnels. Use one of the downloaded scripts for near-automatic connection.</small></p>
             `;
         } else {
             resultDiv.innerHTML = `<p class="error">${data.error}</p>`;
@@ -114,14 +120,75 @@ async function generateConfig() {
     }
 }
 
-function downloadConfig(config) {
-    const blob = new Blob([config], { type: 'text/plain' });
+function downloadFile(content, filename, type = 'text/plain') {
+    const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'wg0.conf';
+    a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
+}
+
+function downloadConfigFile() {
+    if (!latestConfig) return;
+    downloadFile(latestConfig, 'wg0.conf');
+}
+
+function downloadLinuxAutoConnect() {
+    if (!latestConfig) return;
+
+    const script = `#!/usr/bin/env bash
+set -e
+
+if ! command -v wg-quick >/dev/null 2>&1; then
+  echo "wireguard-tools is not installed. Install it first: sudo apt install wireguard-tools"
+  exit 1
+fi
+
+TMP_CONF="/tmp/wg0.conf"
+
+cat > "$TMP_CONF" <<'WGCONF'
+${latestConfig}
+WGCONF
+
+sudo mkdir -p /etc/wireguard
+sudo cp "$TMP_CONF" /etc/wireguard/wg0.conf
+sudo chmod 600 /etc/wireguard/wg0.conf
+sudo wg-quick down wg0 >/dev/null 2>&1 || true
+sudo wg-quick up wg0
+
+echo "VPN connected. To disconnect: sudo wg-quick down wg0"
+`;
+
+    downloadFile(script, 'connect-linux.sh');
+}
+
+function downloadWindowsAutoConnect() {
+    if (!latestConfig) return;
+
+    const script = `# Run this script in PowerShell as Administrator
+$ErrorActionPreference = 'Stop'
+
+$configPath = Join-Path $env:TEMP 'wg0.conf'
+@'
+${latestConfig}
+'@ | Set-Content -Path $configPath -Encoding ascii
+
+$wgExe = "C:\\Program Files\\WireGuard\\wireguard.exe"
+if (-not (Test-Path $wgExe)) {
+    Write-Host "WireGuard is not installed. Download and install from: https://www.wireguard.com/install/"
+    Write-Host "Your config is saved at: $configPath"
+    exit 1
+}
+
+& $wgExe /uninstalltunnelservice wg0 2>$null
+& $wgExe /installtunnelservice $configPath
+
+Write-Host "VPN connected. To disconnect: & '$wgExe' /uninstalltunnelservice wg0"
+`;
+
+    downloadFile(script, 'connect-windows.ps1');
 }
 
 // Load status on page load
